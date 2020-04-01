@@ -1,0 +1,1162 @@
+#include "pch.h"
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <queue>
+using namespace std;
+
+#define W 9
+#define H 10
+
+struct piece
+
+{
+
+	int id;
+
+	int x;
+
+	int y;
+
+	int score;
+
+};
+
+int main(int n, char** argv)
+
+{
+	int order;
+
+	int A[W][H] = { 0 };
+
+	//-- read order ---
+
+	if (n >= 2) order = atoi(argv[1]);
+
+
+
+	//-- read table ----
+
+	ifstream tablefile("table.txt");
+
+	int i, j;
+
+	for (i = 0; i < H; i++)
+
+		for (j = 0; j < W; j++)
+
+			tablefile >> A[j][i];
+
+	for (i = 0; i < H; i++)
+
+	{
+
+		for (j = 0; j < W; j++)
+
+			cout << setw(4) << A[j][i];
+
+		cout << endl;
+
+	}
+
+
+	struct piece pieces[17] = { 0 };//16棋
+
+	int m = 0; //-- number of exist pieces
+
+	for (i = 0; i < W; i++)
+
+		for (j = 0; j < H; j++)
+
+		{
+
+			if (A[i][j] >= 0)
+
+			{
+
+				if (order == 0)
+
+				{
+
+					if (A[i][j] < 100)		//記錄存活棋子及位置
+
+					{
+
+						pieces[m].id = A[i][j];
+
+						pieces[m].x = i;
+
+						pieces[m].y = j;
+
+						m++;
+
+					}
+
+				}
+
+				else if (order == 1)
+
+				{
+
+					if (A[i][j] >= 100)		//記錄自己存活棋子及位置
+
+					{
+
+						pieces[m].id = A[i][j];
+
+						pieces[m].x = i;
+
+						pieces[m].y = j;
+
+						m++;
+					}
+
+				}
+
+			}
+
+		}
+
+
+
+	//--- choice optimal step 
+
+	int pp = 0;		//最小值的id
+	int youx, youy;	//對方將帥的位置
+	if (order == 0)	//後攻
+	{
+		for (i = 0; i < W; i++)
+		{
+
+			for (j = 0; j < H; j++)
+
+			{
+				if (A[i][j] >= 100)
+
+				{
+					if (A[i][j] != -1)
+					{
+						if (A[i][j] == 100)		//找出對方將軍的位座標
+						{
+							youx = i;
+							youy = j;
+							break;
+						}
+					}
+				}
+			}
+		}
+		//---- number all exist pieces ---
+		int save[17] = { 0 };	//存取每個活著棋子的分數
+		int min;
+		ofstream file1;
+		file1.open("mymaneuver.txt");
+
+		for (int ui = 0; ui < 16; ui++)		//給予每顆棋子分數(越靠近對面將帥的分數越低)
+		{
+			if (pieces[ui].id == 13)
+			{
+				pieces[ui].score = 20;
+			}
+			else if (pieces[ui].id == 12)
+			{
+				pieces[ui].score = 22;
+			}
+			else if (pieces[ui].id == 14)
+			{
+				pieces[ui].score = 24;
+			}
+			else if (pieces[ui].id == 11)
+			{
+				pieces[ui].score = 26;
+			}
+			else if (pieces[ui].id == 15)
+			{
+				pieces[ui].score = 28;
+			}
+			else if (pieces[ui].id == 9)
+			{
+				pieces[ui].score = 32;
+			}
+			else if (pieces[ui].id == 10)
+			{
+				pieces[ui].score = 30;
+			}
+			else if (pieces[ui].id == 5 || pieces[ui].id == 6)
+			{
+				pieces[ui].score = 40;
+			}
+			else if (pieces[ui].id == 7 || pieces[ui].id == 8)
+			{
+				pieces[ui].score = 50;
+			}
+			else if (pieces[ui].id == 3 || pieces[ui].id == 4)
+			{
+				pieces[ui].score = 60;
+			}
+			else if (pieces[ui].id == 1 || pieces[ui].id == 2)
+			{
+				pieces[ui].score = 70;
+			}
+			else if (pieces[ui].id == 0)
+			{
+				pieces[ui].score = 80;
+			}
+			file1 << pieces[ui].id << ":" << abs((pieces[ui].x - youx)) + abs((pieces[ui].y - youy)) << "，" << pieces[ui].score << endl;
+			save[ui] = pieces[ui].score;	//把每顆棋子的分數存進 save陣列
+		}
+		file1.close();
+		min = 100;
+		int df = 200;
+		for (int y = 0; y < 16; y++)
+		{
+			if (min >= save[y])
+			{
+				min = save[y];	//最小積分
+			}
+		}
+		for (int yf = 0; yf < 16; yf++)
+		{
+			if (df >= pieces[yf].score)
+			{
+				pp = yf;	//找出最小的id
+				df = pieces[yf].score;
+			}
+		}
+
+
+		//-- write the decision ---
+		ofstream file;
+
+		file.open("play.txt");
+
+		if (A[8][0] == 6)		//先移動一邊的車到中間，攻擊那些一開始移動帥的玩家，後面也方便進攻
+		{
+			file << order << " " << 6 << " " << 8 << " " << 1 << endl;
+		}
+		else if (A[8][1] == 6 && A[7][1] == -1 && A[6][1] == -1 && (A[5][1] > 100 || A[5][1] == -1))
+		{
+			file << order << " " << 6 << " " << 5 << " " << 1 << endl;
+		}
+		else if (A[5][1] == 6 && A[5][2] == -1 && A[5][3] == -1 && A[5][4] == -1 && A[5][5] == -1 && A[5][6] == -1 && A[5][7] == -1 && A[5][8] == -1 && A[5][9] == 100)
+		{
+			file << order << " " << 6 << " " << 5 << " " << 9 << endl;
+		}
+		else if (A[5][1] == 6 && A[5][2] == -1 && A[5][3] == -1 && A[5][4] == -1 && A[5][5] == -1 && A[5][6] == -1 && A[5][7] == -1 && A[5][8] == 100)
+		{
+			file << order << " " << 6 << " " << 5 << " " << 8 << endl;
+		}
+		else if (A[5][1] == 6 && A[5][2] == -1 && A[5][3] == -1 && A[5][4] == -1 && A[5][5] == -1 && A[5][6] == -1 && A[5][7] == 100)
+		{
+			file << order << " " << 6 << " " << 5 << " " << 7 << endl;
+		}
+		if (A[2][0] == 3 && (A[4][2] == -1 || A[4][2] >= 100) && A[3][1] == -1)		//相做基本的防守
+		{
+			file << order << " " << 3 << " " << 4 << " " << 2 << endl;
+		}
+		else if (A[6][0] > 100 && A[4][2] == 3 && A[5][1] == -1 && A[5][1] == -1)
+		{
+			file << order << " " << 3 << " " << 6 << " " << 0 << endl;
+		}
+		else if (A[2][0] > 100 && A[4][2] == 3 && A[3][1] == -1 && A[3][1] == -1)
+		{
+			file << order << " " << 3 << " " << 2 << " " << 0 << endl;
+		}
+		else if (A[2][0] == -1 && A[4][2] == 3 && A[4][3] > 100 && A[3][1] == -1)
+		{
+			file << order << " " << 3 << " " << 2 << " " << 0 << endl;			//--------------
+		}
+		else if (A[0][0] == 5 && A[1][0] > 100)
+		{
+			file << order << " " << 5 << " " << 1 << " " << 0 << endl;
+		}
+		else if (A[4][1] > 100 && A[3][0] == 1)		//仕做基本防守
+		{
+			file << order << " " << 1 << " " << 4 << " " << 1 << endl;
+		}
+		else if (A[4][1] == 1 && (A[4][7] != -1 || A[4][6] != -1 || A[4][5] != -1 || A[4][4] != -1 || A[4][3] != -1 || A[4][2] != -1 || A[4][8] != -1))		//若將軍前方有超過1 顆棋子，仕就回原位
+		{
+			file << order << " " << 1 << " " << 3 << " " << 0 << endl;
+		}
+		else if (A[4][9] == 100 && A[4][1] == -1 && A[4][7] == -1 && A[4][6] == -1 && A[4][5] == -1 && A[4][4] == -1 && A[4][3] == -1 && A[4][2] == -1 && A[4][8] == -1)	//避免王對王
+		{
+			if (A[3][0] == 1 && A[5][0] != -1)
+			{
+				file << order << " " << 1 << " " << 4 << " " << 1 << endl;
+			}
+			else if (A[5][0] == 1 && A[3][0] != -1)
+			{
+				file << order << " " << 2 << " " << 4 << " " << 1 << endl;
+			}
+			else if (A[3][0] == -1 || A[3][0] > 100)
+			{
+				file << order << " " << 0 << " " << 3 << " " << 0 << endl;
+			}
+			else if (A[5][0] == -1 || A[5][0] > 100)
+			{
+				file << order << " " << 0 << " " << 5 << " " << 0 << endl;
+			}
+		}
+		else if (A[3][0] > 100 && A[4][0] == 0)		//將做基本防守，若將行徑範圍旁邊有敵方棋子，則吃掉
+		{
+			file << order << " " << 0 << " " << 3 << " " << 0 << endl;
+		}
+		else if (A[3][0] > 100 && A[4][0] == -1 && A[5][0] == 0)
+		{
+			file << order << " " << 0 << " " << 5 << " " << 1 << endl;
+		}
+		else if (A[3][0] > 100 && A[3][1] == 0)
+		{
+			file << order << " " << 0 << " " << 3 << " " << 0 << endl;
+		}
+		else if (A[5][0] > 100 && A[5][1] == 0)
+		{
+			file << order << " " << 0 << " " << 5 << " " << 0 << endl;
+		}
+		else if (A[5][0] > 100 && A[4][0] == 0)
+		{
+			file << order << " " << 0 << " " << 5 << " " << 0 << endl;
+		}
+		else if (A[5][0] > 100 && A[4][0] == -1 && A[3][0] == 0)
+		{
+			file << order << " " << 0 << " " << 3 << " " << 1 << endl;
+		}
+		else if (A[0][0] == 5 && A[0][1] == -1 && A[0][2] == -1 && A[0][3] == -1 && A[0][4] == -1 && A[0][5] == -1 && A[0][6] == -1 && A[0][7] == -1 && A[0][8] == -1 && A[0][9] > 100)		//另一邊的車則判斷 若前方有對方棋子就吃掉
+		{
+			file << order << " " << 5 << " " << 0 << " " << 9 << endl;
+		}
+		else if (A[0][0] == 5 && A[0][1] == -1 && A[0][2] == -1 && A[0][3] == -1 && A[0][4] == -1 && A[0][5] == -1 && A[0][6] == -1 && A[0][7] == -1 && A[0][8] > 100)
+		{
+			file << order << " " << 5 << " " << 0 << " " << 8 << endl;
+		}
+		else if (A[0][0] == 5 && A[0][1] == -1 && A[0][2] == -1 && A[0][3] == -1 && A[0][4] == -1 && A[0][5] == -1 && A[0][6] == -1 && A[0][7] > 100)
+		{
+			file << order << " " << 5 << " " << 0 << " " << 7 << endl;
+		}
+		else if (A[0][0] == 5 && A[0][1] == -1 && A[0][2] == -1 && A[0][3] == -1 && A[0][4] == -1 && A[0][5] == -1 && A[0][6] > 100)
+		{
+			file << order << " " << 5 << " " << 0 << " " << 6 << endl;
+		}
+		else if (A[0][0] == 5 && A[0][1] == -1 && A[0][2] == -1 && A[0][3] == -1 && A[0][4] == -1 && A[0][5] > 100)
+		{
+			file << order << " " << 5 << " " << 0 << " " << 5 << endl;
+		}
+		else if (A[0][0] == 5 && A[0][1] == -1 && A[0][2] == -1 && A[0][3] == -1 && A[0][4] > 100)
+		{
+			file << order << " " << 5 << " " << 0 << " " << 4 << endl;
+		}
+		else if (A[0][0] == 5 && A[0][1] == -1 && A[0][2] == -1 && A[0][3] > 100)
+		{
+			file << order << " " << 5 << " " << 0 << " " << 3 << endl;
+		}
+		else if (A[0][0] == 5 && A[0][1] == -1 && A[0][2] > 100)
+		{
+			file << order << " " << 5 << " " << 0 << " " << 2 << endl;
+		}
+		else if (A[0][0] == 5 && A[0][1] > 100)
+		{
+			file << order << " " << 5 << " " << 0 << " " << 1 << endl;
+		}
+		else if (A[0][9] == 5 && A[1][9] > 100)
+		{
+			file << order << " " << 5 << " " << 1 << " " << 9 << endl;		//車走到底後往旁邊行走，不斷往中間靠近
+		}
+		else if (A[1][9] == 5 && A[2][9] > 100)
+		{
+			file << order << " " << 5 << " " << 2 << " " << 9 << endl;
+		}
+		else if (A[0][9] == 5 && A[2][9] > 100 && A[1][9] == -1)
+		{
+			file << order << " " << 5 << " " << 2 << " " << 9 << endl;
+		}
+		else if (A[2][9] == 5 && A[3][9] > 100)
+		{
+			file << order << " " << 5 << " " << 3 << " " << 9 << endl;
+		}
+		else if (A[1][9] == 5 && A[2][9] == -1 && A[3][9] > 100)
+		{
+			file << order << " " << 5 << " " << 3 << " " << 9 << endl;
+		}
+		else if (A[0][9] == 5 && A[3][9] > 100 && A[1][9] == -1 && A[2][9] == -1)
+		{
+			file << order << " " << 5 << " " << 3 << " " << 9 << endl;
+		}
+		else if (A[3][8] > 100 && A[3][9] == 5)
+		{
+			file << order << " " << 5 << " " << 3 << " " << 8 << endl;
+		}
+		else if (A[3][9] == 5 && A[4][9] > 100)
+		{
+			file << order << " " << 5 << " " << 4 << " " << 9 << endl;
+		}
+		else if (A[3][9] == 5 && A[4][9] == -1 && A[5][9] > 100)
+		{
+			file << order << " " << 5 << " " << 5 << " " << 9 << endl;
+		}
+		else if (A[2][9] == 5 && A[3][9] == -1 && A[4][9] > 100)
+		{
+			file << order << " " << 5 << " " << 4 << " " << 9 << endl;
+		}
+		else if (A[1][9] == 5 && A[2][9] == -1 && A[3][9] == -1 && A[4][9] > 100)
+		{
+			file << order << " " << 5 << " " << 4 << " " << 9 << endl;
+		}
+		else if (A[0][9] == 5 && A[4][9] > 100 && A[1][9] == -1 && A[2][9] == -1 && A[3][9] == -1)
+		{
+			file << order << " " << 5 << " " << 4 << " " << 9 << endl;
+		}
+		else if (A[4][8] > 100 && A[4][9] == 5)
+		{
+			file << order << " " << 5 << " " << 4 << " " << 8 << endl;
+		}
+		else if (A[4][9] == 5 && A[5][9] > 100)
+		{
+			file << order << " " << 5 << " " << 5 << " " << 9 << endl;
+		}
+		else if (min >= 20 && min <= 28)	//兵 進攻
+		{
+			if (pieces[pp].y > 5)	//判斷有沒有過河
+			{
+
+				if (abs(pieces[pp].x - youx) >= abs(pieces[pp].y - youy) && pieces[pp].x > youx && (A[pieces[pp].x - 1][pieces[pp].y] > 100 || A[pieces[pp].x - 1][pieces[pp].y] == -1))			//向左走
+				{
+					file << order << " " << pieces[pp].id << " " << pieces[pp].x - 1 << " " << pieces[pp].y << endl;
+				}
+				else if (abs(pieces[pp].x - youx) >= abs(pieces[pp].y - youy) && pieces[pp].x < youx && (A[pieces[pp].x + 1][pieces[pp].y] > 100 || A[pieces[pp].x + 1][pieces[pp].y] == -1))	//向右走
+				{
+					file << order << " " << pieces[pp].id << " " << pieces[pp].x + 1 << " " << pieces[pp].y << endl;
+				}
+				else if (abs(pieces[pp].x - youx) > abs(pieces[pp].y - youy) && pieces[pp].y <= 9 && (A[pieces[pp].x][pieces[pp].y + 1] > 100 || A[pieces[pp].x][pieces[pp].y + 1] == -1))	//往前走
+				{
+					file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y + 1 << endl;
+				}
+				else if (pieces[pp].y >= 0 && (A[pieces[pp].x][pieces[pp].y - 1] > 100 || A[pieces[pp].x][pieces[pp].y - 1] == -1))
+				{
+					file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y + 1 << endl;
+				}
+			}
+			else	//若沒過河，都只能往前走
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y + 1 << endl;
+			}
+
+		}
+		else if (min == 40)		//車 寫一迴圈判斷y一路都是-1就可以前進多少吃掉什麼之類的
+		{
+			int jm = 0;
+			jm = pieces[pp].y;
+			if (pieces[pp].y != 9)		//若沒走到底，都往前走
+			{
+				for (int kk = pieces[pp].y + 1; kk <= 9; kk++)
+				{
+					if (A[pieces[pp].x][kk] == -1)	//若沒判斷到棋子就繼續往前判斷
+					{
+						pieces[pp].y = kk;
+					}
+					if (A[pieces[pp].x][kk] != -1)	//若判斷到敵方棋子就移動到敵方棋子的位置
+					{
+						pieces[pp].y = kk;
+						break;	//判斷到棋子，離開迴圈
+					}
+				}
+			}
+			else if (pieces[pp].y == 0 || pieces[pp].y == jm)
+			{
+				if (pieces[pp].x > youx)	//往左衝
+				{
+					for (int kk = pieces[pp].x - 1; kk >= 0; kk--)
+					{
+						if (A[kk][pieces[pp].y] == -1)
+						{
+							pieces[pp].x = kk;
+						}
+						else if (A[kk][pieces[pp].y] != -1)
+						{
+							pieces[pp].x = kk;
+							break;
+						}
+					}
+				}
+				else if (pieces[pp].x < youx)	//往右衝
+				{
+					for (int kk = pieces[pp].x + 1; kk <= 8; kk++)
+					{
+						if (A[kk][pieces[pp].y] == -1)
+						{
+							pieces[pp].x = kk;
+						}
+						else if (A[kk][pieces[pp].y] != -1)
+						{
+
+							pieces[pp].x = kk;
+							break;
+						}
+					}
+				}
+				else if (pieces[pp].x == youx)	//如果走到跟對方將軍同y軸，就往對方將軍進攻
+				{
+					for (int kk = pieces[pp].y + 1; kk <= youy; kk--)
+					{
+						if (A[pieces[pp].x][kk] == -1)
+						{
+							pieces[pp].y = kk;
+						}
+						else if (A[pieces[pp].x][kk] != -1)
+						{
+							pieces[pp].y = kk;
+							break;
+						}
+					}
+				}
+			}
+			file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y << endl;
+		}
+		else if (min == 50)//馬 算是中程距離的防守棋子，但也可攻擊
+		{
+			if (pieces[pp].id = 7)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x + 1 << " " << pieces[pp].y - 2 << endl;
+			}
+			else if (pieces[pp].id = 8)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x - 1 << " " << pieces[pp].y - 2 << endl;
+			}
+		}
+		else if (min == 60)//相 不能過河，可以當做是遠距離防守的棋子，但範圍有限
+		{
+			if (pieces[pp].id = 3)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x + 2 << " " << pieces[pp].y - 2 << endl;
+			}
+			else if (pieces[pp].id = 4)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x + 2 << " " << pieces[pp].y - 2 << endl;
+			}
+		}
+		else if (min == 70)//士 用來保護主帥的，只有四點可以跑
+		{
+			if (pieces[pp].id = 101)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x + 1 << " " << pieces[pp].y - 1 << endl;
+			}
+			else if (pieces[pp].id = 108)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x - 1 << " " << pieces[pp].y - 1 << endl;
+			}
+		}
+		else if (min == 80)//將
+		{
+			if (pieces[0].x == 4 && (pieces[0].y == 0 || pieces[0].y == 1 || pieces[0].y == 2))
+			{
+				pieces[pp].x = pieces[0].x - 1;
+				pieces[pp].y = pieces[0].y;
+			}
+			else if (pieces[0].x == 3 && (pieces[0].y == 0 || pieces[0].y == 1 || pieces[0].y == 2))
+			{
+				pieces[pp].x = pieces[0].x + 1;
+				pieces[pp].y = pieces[0].y;
+			}
+			else if (pieces[0].x == 5 && (pieces[0].y == 0 || pieces[0].y == 1 || pieces[0].y == 2))
+			{
+				pieces[pp].x = pieces[0].x - 1;
+				pieces[pp].y = pieces[0].y;
+
+			}
+			file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y << endl;
+		}
+		else if (min == 30 || min == 32)//炮 可以做機關保護或進攻 偵測X或Y若可以移動便移動
+		{
+			int jm = 0;
+			int istwo = 0;	//用來判斷是不是第二顆別的棋子
+			int rt = 0;		//用來判斷是不是第二顆別的棋子
+			int ok = 0;		//用來判斷是不是第二顆別的棋子
+			int ye = 0;
+			jm = pieces[pp].y;
+			if (pieces[pp].y < 9 && (pieces[pp].y + 1 != 8 && A[pieces[pp].x][pieces[pp].y + 2] == -1) && (pieces[pp].y + 1 != 9 && A[pieces[pp].x][9] > 100))
+			{
+				for (int kk = pieces[pp].y + 1; kk <= 9; kk++)
+				{
+					if (A[pieces[pp].x][kk] == -1)
+					{
+						pieces[pp].y = kk;
+					}
+					if (A[pieces[pp].x][kk] != -1)
+					{
+						istwo++;
+						if (istwo == 2)		//若判斷到第二顆對方棋子就移動到對方棋子位置
+						{
+							pieces[pp].y = kk;
+							break;
+						}
+					}
+				}
+			}
+			else if (pieces[pp].y == 9 || pieces[pp].y == jm)
+			{
+				if (pieces[pp].x > youx)//往左衝
+				{
+					for (int kk = pieces[pp].x - 1; kk >= 0; kk--)
+					{
+						if (A[kk][pieces[pp].y] == -1)
+						{
+							pieces[pp].x = kk;
+						}
+						else if (A[kk][pieces[pp].y] != -1)
+						{
+							rt++;
+							if (rt == 1)
+							{
+								ye = kk;
+							}
+							if (rt == 2)	//若判斷到第二顆對方棋子就移動到對方棋子位置
+							{
+								pieces[pp].x = kk;
+								break;
+							}
+						}
+					}
+					if (rt == 1)	//若前方只有一顆敵方棋子就移動到對方前面
+					{
+						pieces[pp].x = ye + 1;
+					}
+				}
+				else if (pieces[pp].x < youx)//往右衝
+				{
+					for (int kk = pieces[pp].x + 1; kk <= 8; kk++)
+					{
+						if (A[kk][pieces[pp].y] == -1)
+						{
+							pieces[pp].x = kk;
+						}
+						else if (A[kk][pieces[pp].y] != -1)
+						{
+							rt++;
+							if (rt == 1)
+							{
+								ye = kk;
+							}
+							if (rt == 2)	//若判斷到第二顆對方棋子就移動到對方棋子位置
+							{
+								pieces[pp].x = kk;
+								break;
+							}
+						}
+					}
+					if (rt == 1)	//若前方只有一顆敵方棋子就移動到對方前面
+					{
+						pieces[pp].x = (ye - 1);
+					}
+				}
+				else if (pieces[pp].x == youx)	//如果走到跟對方將軍同y軸，就往對方將軍進攻
+				{
+					for (int kk = pieces[pp].y + 1; kk <= youy; kk--)
+					{
+						if (A[pieces[pp].x][kk] == -1)
+						{
+							pieces[pp].y = kk;
+						}
+						else if (A[pieces[pp].x][kk] != -1)
+						{
+							ok++;
+							if (ok == 2)	//若判斷到第二顆對方棋子就移動到對方棋子位置
+							{
+								pieces[pp].y = kk;
+								break;
+							}
+						}
+					}
+				}
+			}
+			file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y << endl;
+		}
+		file.close();
+	}
+	else if (order == 1)//先攻
+	{
+		for (i = 0; i < W; i++)
+		{
+
+			for (j = 0; j < H; j++)
+
+			{
+
+				if (A[i][j] == 0)	//找出對方將軍的座標
+				{
+					youx = i;
+					youy = j;
+					break;
+				}
+			}
+		}
+		//---- number all exist pieces ---
+
+		int save[17] = { 0 };	//存取每個活著棋子的分數
+		int min = 0;
+		ofstream file1;
+		file1.open("mymaneuver.txt");
+
+		for (int ui = 0; ui < 16; ui++)		//給予每顆棋子分數(越靠近對面將帥的分數越低)
+		{
+			if (pieces[ui].id == 113)
+			{
+				pieces[ui].score = 20;
+			}
+			else if (pieces[ui].id == 112)
+			{
+				pieces[ui].score = 22;
+			}
+			else if (pieces[ui].id == 114)
+			{
+				pieces[ui].score = 24;
+			}
+			else if (pieces[ui].id == 111)
+			{
+				pieces[ui].score = 26;
+			}
+			else if (pieces[ui].id == 115)
+			{
+				pieces[ui].score = 28;
+			}
+			else if (pieces[ui].id == 109)
+			{
+				pieces[ui].score = 32;
+			}
+			else if (pieces[ui].id == 110)
+			{
+				pieces[ui].score = 30;
+			}
+			else if (pieces[ui].id == 105 || pieces[ui].id == 106)
+			{
+				pieces[ui].score = 40;
+			}
+			else if (pieces[ui].id == 107 || pieces[ui].id == 108)
+			{
+				pieces[ui].score = 50;
+			}
+			else if (pieces[ui].id == 103 || pieces[ui].id == 104)
+			{
+				pieces[ui].score = 60;
+			}
+			else if (pieces[ui].id == 101 || pieces[ui].id == 102)
+			{
+				pieces[ui].score = 70;
+			}
+			else if (pieces[ui].id = 100)
+			{
+				pieces[ui].score = 80;
+			}
+			file1 << pieces[ui].id << ":" << abs((pieces[ui].x - youx)) + abs((pieces[ui].y - youy)) << "，" << pieces[ui].x << "， " << pieces[ui].y << endl;
+			save[ui] = pieces[ui].score;	//把每顆棋子的分數存進 save陣列
+		}
+		file1.close();
+		min = 100;
+		int df = 200;
+		for (int y = 0; y < 16; y++)
+		{
+			if (min >= save[y])
+			{
+				min = save[y];	//最小積分
+			}
+		}
+		for (int yf = 0; yf < 15; yf++)
+		{
+			if (df >= pieces[yf].score)
+			{
+				pp = yf;	//找出最小的id
+				df = pieces[yf].score;
+			}
+		}
+
+		ofstream file;
+
+		file.open("play.txt");
+		if (A[8][9] == 106)		//先移動一邊的車到中間，攻擊那些一開始移動帥的玩家，後面也方便進攻
+		{
+			file << order << " " << 106 << " " << 8 << " " << 8 << endl;
+		}
+		else if (A[8][8] == 106)
+		{
+			file << order << " " << 106 << " " << 3 << " " << 8 << endl;
+		}
+		else if (A[3][8] == 106 && A[3][7] == -1 && A[3][6] == -1 && A[3][5] == -1 && A[3][4] == -1 && A[3][3] == -1 && A[3][2] == -1 && A[3][1] == -1 && A[3][0] == 0)
+		{
+			file << order << " " << 106 << " " << 3 << " " << 0 << endl;
+		}
+		else if (A[3][8] == 106 && A[3][7] == -1 && A[3][6] == -1 && A[3][5] == -1 && A[3][4] == -1 && A[3][3] == -1 && A[3][2] == -1 && A[3][1] == 0)
+		{
+			file << order << " " << 106 << " " << 3 << " " << 1 << endl;
+		}
+		else if (A[3][8] == 106 && A[3][7] == -1 && A[3][6] == -1 && A[3][5] == -1 && A[3][4] == -1 && A[3][3] == -1 && A[3][2] == 0)
+		{
+			file << order << " " << 106 << " " << 3 << " " << 2 << endl;
+		}
+		else if (A[6][9] == 104 && A[4][7] < 100 && A[5][8] == -1)				//相做基本的防守
+		{
+			file << order << " " << 104 << " " << 4 << " " << 7 << endl;
+		}
+		else if (A[6][9] < 100 && A[6][9] != -1 && A[4][7] == 104 && A[5][8] == -1)
+		{
+			file << order << " " << 104 << " " << 6 << " " << 9 << endl;
+		}
+		else if (A[2][9] < 100 && A[2][9] != -1 && A[4][7] == 104 && A[3][8] == -1)
+		{
+			file << order << " " << 104 << " " << 2 << " " << 9 << endl;
+		}
+		else if (A[4][7] == 104 && A[4][6] < 100 && A[4][6] != -1 && A[4][6] != 5 && A[4][6] != 6 && A[5][8] == -1)
+		{
+			file << order << " " << 104 << " " << 6 << " " << 9 << endl;	//--------------
+		}
+		else if (A[4][7] == 104 && A[4][6] == 5 && A[4][6] == 6 && A[3][9] == 101 && A[4][8] == -1)	//仕做基本防守
+		{
+			file << order << " " << 101 << " " << 4 << " " << 8 << endl;
+		}
+		else if (A[4][8] == 100 && (A[3][8] == 5 || A[3][8] == 6) && (A[5][8] == 5 || A[5][8] == 6))	//將做防守
+		{
+			file << order << " " << 100 << " " << 4 << " " << 9 << endl;
+		}
+		else if (A[4][8] == 100 && A[3][8] < 100 && A[3][8] != -1 && A[5][8] < 100 && A[5][8] != 5 && A[5][8] != 6)
+		{
+			file << order << " " << 100 << " " << 3 << " " << 8 << endl;
+		}
+		else if (A[4][8] == 100 && A[5][8] < 100 && A[5][8] != -1 && A[3][8] < 100 && A[3][8] != 5 && A[3][8] != 6)
+		{
+			file << order << " " << 100 << " " << 5 << " " << 8 << endl;
+		}
+		else if ((A[2][9] == 5 || A[1][9] == 5 || A[0][9] == 5 || A[2][9] == 6 || A[1][9] == 6 || A[0][9] == 6) && A[4][9] == 100 && A[4][8] == -1)		//將防守對方車
+		{
+			file << order << " " << 100 << " " << 4 << " " << 8 << endl;
+		}
+		else if ((A[2][9] == 5 || A[1][9] == 5 || A[0][9] == 5 || A[2][9] == 6 || A[1][9] == 6 || A[0][9] == 6) && A[3][9] == 100 && A[3][8] == -1)
+		{
+			file << order << " " << 100 << " " << 3 << " " << 8 << endl;
+		}
+		else if ((A[2][9] == 5 || A[1][9] == 5 || A[0][9] == 5 || A[2][9] == 6 || A[1][9] == 6 || A[0][9] == 6) && A[5][9] == 100 && A[5][8] == -1)
+		{
+			file << order << " " << 100 << " " << 5 << " " << 8 << endl;
+		}
+		else if (A[3][9] < 100 && A[3][9] != -1 && A[3][8] == 100)		//將做防守，若在將行徑範圍內有對防棋子就吃掉
+		{
+			file << order << " " << 100 << " " << 3 << " " << 9 << endl;
+		}
+		else if (A[4][9] < 100 && A[4][9] != -1 && A[4][8] == 100)
+		{
+			file << order << " " << 100 << " " << 4 << " " << 9 << endl;
+		}
+		else if (A[5][9] < 100 && A[5][9] != -1 && A[5][8] == 100)
+		{
+			file << order << " " << 100 << " " << 5 << " " << 9 << endl;
+		}
+		else if (A[3][8] == 100 && A[4][8] < 100 && A[4][8] != -1)
+		{
+			file << order << " " << 100 << " " << 4 << " " << 8 << endl;
+		}
+		else if (A[5][8] == 100 && A[4][8] < 100 && A[4][8] != -1)		//-------------------------------
+		{
+			file << order << " " << 100 << " " << 4 << " " << 8 << endl;
+		}
+		else if (A[4][8] < 100 && A[4][8] != -1 && A[3][9] == 101)		//仕做基本防守
+		{
+			file << order << " " << 101 << " " << 4 << " " << 8 << endl;
+		}
+		else if (A[4][8] == 101 && (A[4][7] != -1 || A[4][6] != -1 || A[4][5] != -1 || A[4][4] != -1 || A[4][3] != -1 || A[4][2] != -1 || A[4][1] != -1))
+		{
+			file << order << " " << 101 << " " << 3 << " " << 9 << endl;
+		}
+		else if (A[3][8] == 100 && A[3][7] < 100 && A[3][7] != -1)		//若在將行徑範圍內有對防棋子就吃掉
+		{
+			file << order << " " << 100 << " " << 3 << " " << 7 << endl;
+		}
+		else if (A[4][8] == 100 && A[4][7] < 100 && A[4][7] != -1)
+		{
+			file << order << " " << 100 << " " << 4 << " " << 7 << endl;
+		}
+		else if (A[5][8] == 100 && A[5][7] < 100 && A[5][7] != -1)
+		{
+			file << order << " " << 100 << " " << 5 << " " << 7 << endl;
+		}
+		else if (A[4][0] == 0 && A[4][1] == -1 && A[4][7] == -1 && A[4][6] == -1 && A[4][5] == -1 && A[4][4] == -1 && A[4][3] == -1 && A[4][2] == -1 && A[4][8] == -1)	//避免王對王
+		{
+			if (A[3][9] == 101 && A[5][9] != -1)
+			{
+				file << order << " " << 101 << " " << 4 << " " << 8 << endl;
+			}
+			else if (A[5][9] == 102 && A[3][9] != -1)
+			{
+				file << order << " " << 102 << " " << 4 << " " << 8 << endl;
+			}
+			else if (A[3][9] < 100)
+			{
+				file << order << " " << 100 << " " << 3 << " " << 9 << endl;
+			}
+			else if (A[5][9] < 100)
+			{
+				file << order << " " << 100 << " " << 5 << " " << 9 << endl;
+			}
+		}
+		else if (A[3][9] < 100 && A[4][9] == 100 && A[3][9] != -1)		//若在將行徑範圍內有對防棋子就吃掉
+		{
+			file << order << " " << 100 << " " << 3 << " " << 9 << endl;
+		}
+		else if (A[5][9] < 100 && A[4][9] == 100 && A[5][9] != -1)
+		{
+			file << order << " " << 100 << " " << 5 << " " << 9 << endl;
+		}
+		else if (min >= 20 && min <= 28)	//兵 進攻
+		{
+			if (pieces[pp].y < 5)	//判斷有沒有過河
+			{
+				if (abs(pieces[pp].x - youx) >= abs(pieces[pp].y - youy) && pieces[pp].x > youx&&A[pieces[pp].x - 1][pieces[pp].y] < 100)//往左走
+				{
+					file << order << " " << pieces[pp].id << " " << pieces[pp].x - 1 << " " << pieces[pp].y << endl;
+				}
+				else if (abs(pieces[pp].x - youx) <= abs(pieces[pp].y - youy) && pieces[pp].x < youx&&A[pieces[pp].x + 1][pieces[pp].y] < 100)//往右走
+				{
+					file << order << " " << pieces[pp].id << " " << pieces[pp].x + 1 << " " << pieces[pp].y << endl;
+				}
+				else if (abs(pieces[pp].x - youx) > abs(pieces[pp].y - youy) && pieces[pp].y >= 0 && A[pieces[pp].x][pieces[pp].y - 1] < 100)//往前走
+				{
+					file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y - 1 << endl;
+				}
+				else if (pieces[pp].y >= 0 && A[pieces[pp].x][pieces[pp].y - 1] < 100)
+				{
+					file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y - 1 << endl;
+				}
+			}
+			else		//若沒過河，都只能往前走
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y - 1 << endl;
+			}
+		}
+		else if (min == 40)//車 寫一迴圈判斷y一路都是-1就可以前進多少吃掉什麼之類的
+		{
+			int jm = 0;
+			jm = pieces[pp].y;
+			if (pieces[pp].y != 0)	//若沒走到底，都往前走
+			{
+				for (int kk = pieces[pp].y - 1; kk >= 0; kk--)
+				{
+					if (A[pieces[pp].x][kk] == -1)	//若沒判斷到棋子就繼續往前判斷
+					{
+						pieces[pp].y = kk;
+					}
+					if (A[pieces[pp].x][kk] != -1)	//若判斷到敵方棋子就移動到敵方棋子的位置
+					{
+						pieces[pp].y = kk;
+						break;	//判斷到棋子，離開迴圈
+					}
+				}
+			}
+			else if (pieces[pp].y == 0 || pieces[pp].y == jm)
+			{
+				if (pieces[pp].x > youx)//往左衝
+				{
+					for (int kk = pieces[pp].x - 1; kk >= 0; kk--)
+					{
+						if (A[kk][pieces[pp].y] == -1)
+						{
+							pieces[pp].x = kk;
+						}
+						else if (A[kk][pieces[pp].y] != -1)
+						{
+							pieces[pp].x = kk;
+							break;
+						}
+					}
+				}
+				else if (pieces[pp].x < youx)//往右衝
+				{
+					for (int kk = pieces[pp].x + 1; kk <= 8; kk++)
+					{
+						if (A[kk][pieces[pp].y] == -1)
+						{
+							pieces[pp].x = kk;
+						}
+						else if (A[kk][pieces[pp].y] != -1)
+						{
+							pieces[pp].x = kk;
+							break;
+						}
+					}
+				}
+				else if (pieces[pp].x == youx)	//如果走到跟對方將軍同y軸，就往對方將軍進攻
+				{
+					for (int kk = pieces[pp].y - 1; kk <= youy; kk--)
+					{
+						if (A[pieces[pp].x][kk] == -1)
+						{
+							pieces[pp].y = kk;
+						}
+						else if (A[pieces[pp].x][kk] != -1)
+						{
+							pieces[pp].y = kk;
+							break;
+						}
+					}
+				}
+			}
+			file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y << endl;
+		}
+		else if (min == 50)//馬 算是中程距離的防守棋子，但也可攻擊
+		{
+			if (pieces[pp].id = 107)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x + 1 << " " << pieces[pp].y - 2 << endl;
+			}
+			else if (pieces[pp].id = 108)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x - 1 << " " << pieces[pp].y - 2 << endl;
+			}
+		}
+		else if (min == 60)//相 不能過河，可以當做是遠距離防守的棋子，但範圍有限
+		{
+			if (pieces[pp].id = 105)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x + 2 << " " << pieces[pp].y - 2 << endl;
+			}
+			else if (pieces[pp].id = 106)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x + 2 << " " << pieces[pp].y - 2 << endl;
+			}
+		}
+		else if (min == 70)//士 用來保護主帥的，只有四點可以跑
+		{
+			if (pieces[pp].id = 101)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x + 1 << " " << pieces[pp].y - 1 << endl;
+			}
+			else if (pieces[pp].id = 108)
+			{
+				file << order << " " << pieces[pp].id << " " << pieces[pp].x - 1 << " " << pieces[pp].y - 1 << endl;
+			}
+		}
+		else if (min == 80)//將
+		{
+			if (pieces[0].x == 4 && (pieces[0].y == 9 || pieces[0].y == 8 || pieces[0].y == 7))
+			{
+				pieces[pp].x = pieces[0].x - 1;
+				pieces[pp].y = pieces[0].y;
+			}
+			else if (pieces[0].x == 3 && (pieces[0].y == 9 || pieces[0].y == 8 || pieces[0].y == 7))
+			{
+				pieces[pp].x = pieces[0].x + 1;
+				pieces[pp].y = pieces[0].y;
+			}
+			else if (pieces[0].x == 5 && (pieces[0].y == 9 || pieces[0].y == 8 || pieces[0].y == 7))
+			{
+				pieces[pp].x = pieces[0].x - 1;
+				pieces[pp].y = pieces[0].y;
+
+			}
+			file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y << endl;
+		}
+		else if (min == 30 || min == 32)//炮 可以做機關保護或進攻 偵測X或Y若可以移動便移動
+		{
+			int jm = 0;
+			int istwo = 0;	//用來判斷是不是第二顆別的棋子
+			int rt = 0;		//用來判斷是不是第二顆別的棋子
+			int ok = 0;		//用來判斷是不是第二顆別的棋子
+			int ye = 0;
+			jm = pieces[pp].y;
+			if (pieces[pp].y != 0 && (pieces[pp].y - 1 != 0 && A[pieces[pp].x][0] < 100 && A[pieces[pp].x][0] != -1))
+			{
+				for (int kk = pieces[pp].y - 1; kk >= 0; kk--)
+				{
+					if (A[pieces[pp].x][kk] == -1)
+					{
+						pieces[pp].y = kk;
+					}
+					if (A[pieces[pp].x][kk] != -1)
+					{
+						istwo++;
+						if (istwo == 2)		//若判斷到第二顆對方棋子就移動到對方棋子位置
+						{
+							pieces[pp].y = kk;
+							break;
+						}
+					}
+				}
+			}
+			else if (pieces[pp].y == 0 || pieces[pp].y == jm)
+			{
+				if (pieces[pp].x > youx)//往左衝
+				{
+					for (int kk = pieces[pp].x - 1; kk >= 0; kk--)
+					{
+						if (A[kk][pieces[pp].y] == -1)
+						{
+							pieces[pp].x = kk;
+						}
+						else if (A[kk][pieces[pp].y] != -1)
+						{
+							rt++;
+							if (rt == 1)
+							{
+								ye = kk;
+								cout << ye;
+							}
+							if (rt == 2)	//若判斷到第二顆對方棋子就移動到對方棋子位置
+							{
+								pieces[pp].x = kk;
+								break;
+							}
+						}
+					}
+					if (rt == 1)	//若前方只有一顆敵方棋子就移動到對方前面
+					{
+						pieces[pp].x = (ye + 1);
+					}
+				}
+				else if (pieces[pp].x < youx)//往右衝
+				{
+					for (int kk = pieces[pp].x + 1; kk <= 8; kk++)
+					{
+						if (A[kk][pieces[pp].y] == -1)
+						{
+							pieces[pp].x = kk;
+						}
+						else if (A[kk][pieces[pp].y] != -1)
+						{
+							rt++;
+							if (rt == 1)
+							{
+								ye = kk;
+							}
+							if (rt == 2)	//若判斷到第二顆對方棋子就移動到對方棋子位置
+							{
+								pieces[pp].x = kk;
+								break;
+							}
+						}
+					}
+					if (rt == 1)	//若前方只有一顆敵方棋子就移動到對方前面
+					{
+						pieces[pp].x = (ye - 1);
+					}
+				}
+				else if (pieces[pp].x == youx)
+				{
+					for (int kk = pieces[pp].y - 1; kk <= youy; kk--)
+					{
+						if (A[pieces[pp].x][kk] == -1)
+						{
+							pieces[pp].y = kk;
+						}
+						else if (A[pieces[pp].x][kk] != -1)
+						{
+							ok++;
+							if (ok == 2)	//若判斷到第二顆對方棋子就移動到對方棋子位置
+							{
+								pieces[pp].y = kk;
+								break;
+							}
+						}
+					}
+				}
+			}
+			file << order << " " << pieces[pp].id << " " << pieces[pp].x << " " << pieces[pp].y << endl;
+		}
+		file.close();
+	}
+	return 1;
+
+}
